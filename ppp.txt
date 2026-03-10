@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Scanner - Teachable Machine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        canvas {
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            width: 100% !important;
+            max-width: 400px;
+            height: auto !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+
+    <div class="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">AI Detector</h1>
+        <p class="text-gray-500 mb-6 text-sm">Klik tombol di bawah untuk mulai deteksi</p>
+
+        <div id="webcam-container" class="flex justify-center mb-6 bg-gray-200 rounded-2xl overflow-hidden min-h-[200px] items-center text-gray-400 italic">
+            Kamera belum aktif
+        </div>
+
+        <button type="button" onclick="init()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg mb-8">
+            Start Camera
+        </button>
+
+        <div id="label-container" class="space-y-3">
+            </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <script type="text/javascript">
+        // PENTING: Ganti link di bawah ini dengan link model lo dari Teachable Machine!
+        const URL = "https://teachablemachine.withgoogle.com/models/K2E7UcuM7/"; 
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            // Load model
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            // Setup webcam
+            const flip = true; 
+            webcam = new tmImage.Webcam(400, 400, flip); 
+            await webcam.setup(); 
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // Ganti placeholder dengan canvas asli
+            const container = document.getElementById("webcam-container");
+            container.innerHTML = "";
+            container.appendChild(webcam.canvas);
+
+            // Setup label styling
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = ""; // Bersihkan kontainer
+            for (let i = 0; i < maxPredictions; i++) {
+                const badge = document.createElement("div");
+                badge.className = "flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 shadow-sm";
+                badge.innerHTML = `<span class="font-medium text-gray-700">...</span><span class="text-blue-600 font-bold text-sm">0%</span>`;
+                labelContainer.appendChild(badge);
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            for (let i = 0; i < maxPredictions; i++) {
+                const className = prediction[i].className;
+                const probability = (prediction[i].probability * 100).toFixed(0) + "%";
+                
+                const child = labelContainer.childNodes[i];
+                child.innerHTML = `<span class="font-medium text-gray-700">${className}</span><span class="text-blue-600 font-bold">${probability}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
